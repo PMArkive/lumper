@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using SharpCompress.Archives.Zip;
@@ -17,10 +17,10 @@ namespace MomBspTools
         public static void Main(string[] args)
         {
 
-            const bool compress = true;
-            const bool change = true;
-            const bool changePak = true;
-            const bool compressPak = true;
+            const bool compress = false;
+            const bool change = false;
+            const bool changePak = false;
+            const bool compressPak = false;
 
             int pakFileIdx = 0;
             //DirectoryInfo di = new("./lumps/");
@@ -36,6 +36,16 @@ namespace MomBspTools
 
             var map1 = new BspFile();
             map1.Load(args[0]);
+
+            {
+                var gameLump = map1.GetLump<GameLump>();
+                var gameLumpSprp = gameLump.GetLump<Sprp>();
+                if (gameLumpSprp is Sprp sprp)
+                {
+                    Console.WriteLine($"Sprp version: {gameLumpSprp.Version} ({sprp.StaticProps.ActualVersion})");
+                }
+            }
+
             //LoadMap(args[0]);
 
             var cubemapsLump = map1.GetLump(BspLumpType.Cubemaps);
@@ -264,6 +274,7 @@ namespace MomBspTools
                 var gameLumpSprp = gameLump.GetLump<Sprp>();
                 if (gameLumpSprp is Sprp sprp)
                 {
+                    Console.WriteLine($"Sprp version: {gameLumpSprp.Version} ({sprp.StaticProps.ActualVersion})");
                     sprp.StaticProps.ActualVersion = StaticPropVersion.V11;
                     Console.WriteLine("StaticProps:");
                     for (int i = 0; i < sprp.StaticPropsDict.Data.Count; i++)
@@ -333,7 +344,8 @@ namespace MomBspTools
                 }
             }
 
-            map1.Version = 21;
+            if (change)
+                map1.Version = 21;
 
             map1.Save("test.bsp");
 
