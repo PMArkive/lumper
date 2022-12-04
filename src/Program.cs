@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using SharpCompress.Archives.Zip;
@@ -264,7 +264,8 @@ namespace MomBspTools
                 var gameLumpSprp = gameLump.GetLump<Sprp>();
                 if (gameLumpSprp is Sprp sprp)
                 {
-                    sprp.StaticProps.ActualVersion = StaticPropVersion.V11;
+                    if (sprp.StaticProps.ActualVersion != StaticPropVersion.V12)
+                        sprp.StaticProps.ActualVersion = StaticPropVersion.V11;
                     Console.WriteLine("StaticProps:");
                     for (int i = 0; i < sprp.StaticPropsDict.Data.Count; i++)
                     {
