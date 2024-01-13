@@ -166,8 +166,6 @@ public partial class MainWindowViewModel
         var bspFile = new BspFile(path);
 
         BspModel = new BspViewModel(bspFile);
-        BspModel.Loading.OnNext(true);
-
         TasksModel = new Tasks.TasksViewModel(bspFile);
         IsProgressBarVisible = true;
 
@@ -176,7 +174,6 @@ public partial class MainWindowViewModel
 
         Content = BspModel;
         IsProgressBarVisible = false;
-        BspModel.Loading.OnNext(false);
     }
 
     private async Task LoadBsp(IStorageFile file)

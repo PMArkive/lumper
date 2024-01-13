@@ -1,4 +1,3 @@
-using System.Reactive.Subjects;
 using ReactiveUI;
 using Lumper.Lib.BSP;
 using Lumper.UI.ViewModels.Bsp.Lumps;
@@ -14,7 +13,6 @@ public partial class BspViewModel : ViewModelBase
 {
     private string? _filePath;
     private string? _fileName;
-    public readonly Subject<bool> Loading = new();
 
     public BspViewModel(BspFile bspFile)
     {
