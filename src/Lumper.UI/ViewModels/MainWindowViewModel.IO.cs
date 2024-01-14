@@ -158,22 +158,33 @@ public partial class MainWindowViewModel
         _bspModel.FilePath = path;
     }
 
-    private async void LoadBsp(string path)
+    private async Task LoadBsp(string path)
     {
-        BspModel = null;
-        Content = null;
+        try
+        {
+            BspModel = null;
+            Content = null;
 
-        var bspFile = new BspFile(path);
+            IsProgressBarVisible = true;
 
-        BspModel = new BspViewModel(bspFile);
-        TasksModel = new Tasks.TasksViewModel(bspFile);
-        IsProgressBarVisible = true;
+            await Task.Run(() =>
+            {
+                var bspFile = new BspFile(path);
 
-        if (BspModel.BspNode is BspNodeViewModel bspNodeViewModel)
-            await bspNodeViewModel.InitializeAsync();
+                BspModel = new BspViewModel(bspFile);
+                TasksModel = new Tasks.TasksViewModel(bspFile);
+                Content = BspModel;
 
-        Content = BspModel;
-        IsProgressBarVisible = false;
+            });
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+        finally
+        {
+            IsProgressBarVisible = false;
+        }
     }
 
     private async Task LoadBsp(IStorageFile file)
@@ -186,7 +197,7 @@ public partial class MainWindowViewModel
         {
             throw new Exception("Failed to get file path");
         }
-        LoadBsp(path.AbsolutePath);
+        await LoadBsp(path.AbsolutePath);
     }
 
     public void BspToJsonCommand()

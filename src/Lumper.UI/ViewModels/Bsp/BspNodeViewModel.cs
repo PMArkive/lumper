@@ -25,6 +25,10 @@ public class BspNodeViewModel : BspNodeBase, IDisposable
     {
         _parent = parent;
         NodeName = Path.GetFileName(parent.BspFile.FilePath);
+        foreach (var (key, value) in parent.BspFile.Lumps)
+            ParseLump(key, value);
+        InitializeNodeChildrenObserver(_lumps);
+
     }
 
     public override string NodeName
@@ -37,24 +41,15 @@ public class BspNodeViewModel : BspNodeBase, IDisposable
         _lumps.Dispose();
     }
 
-    internal async Task InitializeAsync()
+    private void ParseLump(BspLumpType type, Lump<BspLumpType> lump)
     {
-        await Task.WhenAll(_parent.BspFile.Lumps.Select(lump => ParseLumpAsync(lump.Key, lump.Value)));
-        InitializeNodeChildrenObserver(_lumps);
-    }
-
-    private async Task ParseLumpAsync(BspLumpType type, Lump<BspLumpType> lump)
-    {
-        await Task.Run(() =>
+        LumpBase lumpModel = lump switch
         {
-            LumpBase lumpModel = lump switch
-            {
-                EntityLump el => new EntityLumpViewModel(BspView, el),
-                PakFileLump el => new PakFileLumpViewModel(BspView, el),
+            EntityLump el => new EntityLumpViewModel(BspView, el),
+            PakFileLump el => new PakFileLumpViewModel(BspView, el),
             _ => new UnmanagedLumpViewModel(BspView, type)
-            };
-            _lumps.Add(lumpModel);
-        });
+        };
+        _lumps.Add(lumpModel);
     }
 
     protected override ValueTask<bool> Match(Matcher matcher,
