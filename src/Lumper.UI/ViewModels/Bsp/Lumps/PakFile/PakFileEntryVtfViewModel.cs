@@ -1,11 +1,12 @@
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
+using Lumper.Lib.BSP.Struct;
+using Lumper.UI.Models;
+using Lumper.UI.ViewModels.VtfBrowser;
 using ReactiveUI;
-using VTFLib;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using Lumper.Lib.BSP.Struct;
+using VTFLib;
 
 namespace Lumper.UI.ViewModels.Bsp.Lumps.PakFile;
 
@@ -15,6 +16,7 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
         PakFileEntry entry, string name)
         : base(parent, entry, name)
     {
+        VtfBrowserViewModel.AddTexture(entry, name);
     }
 
     public override BspNodeBase? ViewNode => this;
@@ -23,6 +25,7 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
         $"PakFileEntry{(string.IsNullOrWhiteSpace(Name) ? "" : $" ({Name})")}";
 
     private string _info = "";
+
     public string Info
     {
         get => _info;
@@ -30,9 +33,14 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
     }
 
     private bool _isModified = false;
-    public override bool IsModified { get => _isModified; }
+
+    public override bool IsModified
+    {
+        get => _isModified;
+    }
 
     public Image<Rgba32>? _image = null;
+
     public Image<Rgba32>? Image
     {
         get => _image;
@@ -40,181 +48,89 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
     }
 
     private uint _frame;
+
     public uint Frame
     {
         get => _frame;
         private set
         {
             this.RaiseAndSetIfChanged(ref _frame, value);
-            OpenImage();
+            UpdateImage();
         }
     }
 
-    public uint _face;
+    private uint _face;
+
     public uint Face
     {
         get => _face;
         private set
         {
             this.RaiseAndSetIfChanged(ref _face, value);
-            OpenImage();
+            UpdateImage();
         }
     }
 
-    public uint _slice;
+    private uint _slice;
+
     public uint Slice
     {
         get => _slice;
         private set
         {
             this.RaiseAndSetIfChanged(ref _slice, value);
-            OpenImage();
+            UpdateImage();
         }
     }
 
-    public uint _mipmapLevel;
+    private uint _mipmapLevel;
+
     public uint MipmapLevel
     {
         get => _mipmapLevel;
         private set
         {
             this.RaiseAndSetIfChanged(ref _mipmapLevel, value);
-            OpenImage();
+            UpdateImage();
         }
     }
 
-    private uint _depth;
-    public uint Depth
-    {
-        get => _depth;
-        private set => this.RaiseAndSetIfChanged(ref _depth, value);
-    }
+    public uint FrameMax => _vtfData?._frameCount - 1 ?? 0;
+    public uint FaceMax => _vtfData?._faceCount - 1 ?? 0;
+    public uint MipmapMax => _vtfData?._mipmapCount - 1 ?? 0;
 
-    private uint _frameCount;
-    public uint FrameCount
-    {
-        get => _frameCount;
-        private set
-        {
-            if (_frameCount != value)
-            {
-                _frameCount = value;
-                this.RaisePropertyChanged();
-                this.RaisePropertyChanged(nameof(FrameMax));
-            }
-        }
-    }
-    public uint FrameMax { get { return FrameCount - 1; } }
+    private VtfFileData? _vtfData;
 
-    private uint _faceCount;
-    public uint FaceCount
-    {
-        get => _faceCount;
-        private set
-        {
-            if (_faceCount != value)
-            {
-                _faceCount = value;
-                this.RaisePropertyChanged();
-                this.RaisePropertyChanged(nameof(FaceMax));
-            }
-        }
-    }
-    public uint FaceMax { get { return FaceCount - 1; } }
-
-    private uint _mipmapCount;
-    public uint MipmapCount
-    {
-        get => _mipmapCount;
-        private set
-        {
-            if (_mipmapCount != value)
-            {
-                _mipmapCount = value;
-                this.RaisePropertyChanged();
-                this.RaisePropertyChanged(nameof(MipmapMax));
-            }
-        }
-    }
-    public uint MipmapMax { get { return MipmapCount - 1; } }
-
-    public VTFImageFlag _flags;
-    public VTFImageFlag Flags
-    {
-        get => _flags;
-        private set => this.RaiseAndSetIfChanged(ref _flags, value);
-    }
-
-    private uint imageIndex = 0;
-    protected bool Opened { get; private set; }
     public override void Open()
     {
-        VTFAPI.Initialize();
-        //can't get length for byte array from LzmaStream 
+        //can't get length for byte array from LzmaStream
         //so we need to read to a different stream first
         using var mem = new MemoryStream();
         _entry.DataStream.CopyTo(mem);
-        byte[] vtfBuffer = mem.ToArray();
+        _vtfData = new VtfFileData(mem.ToArray());
 
-        if (!Opened)
-            VTFFile.CreateImage(ref imageIndex);
-        else
-            Opened = true;
-        VTFFile.BindImage(imageIndex);
-        VTFFile.ImageLoadLump(vtfBuffer, (uint)vtfBuffer.Length, false);
-
-        Depth = VTFFile.ImageGetDepth();
-
-        FrameCount = VTFFile.ImageGetFrameCount();
-        FaceCount = VTFFile.ImageGetFaceCount();
-        MipmapCount = VTFFile.ImageGetMipmapCount();
-        Flags = (VTFImageFlag)VTFFile.ImageGetFlags();
+        this.RaisePropertyChanged(nameof(FrameMax));
+        this.RaisePropertyChanged(nameof(FaceMax));
+        this.RaisePropertyChanged(nameof(MipmapMax));
 
         Info = $"MajorVersion: {VTFFile.ImageGetMajorVersion()}\n" +
-                  $"MinorVersion: {VTFFile.ImageGetMinorVersion()}\n" +
-                  $"Size: {VTFFile.ImageGetSize()}\n" +
-                  $"Width: {VTFFile.ImageGetWidth()}\n" +
-                  $"Height: {VTFFile.ImageGetHeight()}\n" +
-                  $"Format: {Enum.GetName(VTFFile.ImageGetFormat())}\n" +
-                  $"Depth: {Depth}\n" +
-                  $"FrameCount: {FrameCount}\n" +
-                  $"FaceCount: {FaceCount}\n" +
-                  $"MipmapCount: {MipmapCount}\n" +
-                  $"Flags: {Flags.ToString().Replace(",", "\n")}\n";
+               $"MinorVersion: {VTFFile.ImageGetMinorVersion()}\n" +
+               $"Size: {VTFFile.ImageGetSize()}\n" +
+               $"Width: {VTFFile.ImageGetWidth()}\n" +
+               $"Height: {VTFFile.ImageGetHeight()}\n" +
+               $"Format: {Enum.GetName(VTFFile.ImageGetFormat())}\n" +
+               $"Depth: {_vtfData._depth}\n" +
+               $"FrameCount: {_vtfData._frameCount}\n" +
+               $"FaceCount: {_vtfData._faceCount}\n" +
+               $"MipmapCount: {_vtfData._mipmapCount}\n" +
+               $"Flags: {_vtfData._flags.ToString().Replace(",", "\n")}\n";
 
-        OpenImage();
+        UpdateImage();
     }
 
-    private void OpenImage()
+    private void UpdateImage()
     {
-        VTFFile.BindImage(imageIndex);
-        uint hasImage = VTFFile.ImageGetHasImage();
-        if (hasImage != 0)
-        {
-            uint w = VTFFile.ImageGetWidth();
-            uint h = VTFFile.ImageGetHeight();
-            var f = VTFFile.ImageGetFormat();
-            IntPtr ucharPtr = VTFFile.ImageGetData(Frame, Face, Slice, MipmapLevel);
-            var size = (int)VTFFile.ImageComputeImageSize(w, h, 1, 1, f);
-            var img = GetImage(ucharPtr, size, w, h, f);
-            Image = img;
-        }
-    }
-    private Image<Rgba32> GetImage(IntPtr ptr, int size, uint width, uint height, VTFImageFormat format)
-    {
-        var data = new byte[size];
-        Marshal.Copy(ptr, data, 0, size);
-        return GetImage(data, width, height, format);
-    }
-    private Image<Rgba32> GetImage(byte[] source, uint width, uint height, VTFImageFormat format)
-    {
-        int size = (int)width * (int)height * 4;
-        if (size <= 0)
-            throw new ArgumentException("image data array size is 0");
-        var dest = new byte[size];
-        VTFFile.ImageConvertToRGBA8888(source, dest, width, height, format);
-        var img = GetImageFromRgba8888(dest, (int)width, (int)height);
-        return img;
+        Image = _vtfData?.GetImage(Frame, Face, Slice, MipmapLevel);
     }
 
     public static Image<Rgba32> ImageFromFileStream(Stream fileSteam)
@@ -224,49 +140,56 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
 
     public void SetImageData(Image<Rgba32> image)
     {
+        if (!_vtfData!.Bind())
+        {
+            return;
+        }
+
         _isModified = true;
-        VTFFile.BindImage(imageIndex);
         byte[] buffer = GetRgba888FromImage(image, out _);
 
         var f = VTFFile.ImageGetFormat();
         int size = (int)VTFFile.ImageComputeImageSize(
             (uint)image.Width, (uint)image.Height, 1, 1, f);
-        var buffer2 = new byte[size];
+        byte[] buffer2 = new byte[size];
         VTFFile.ImageConvertFromRGBA8888(
             buffer,
             buffer2,
             (uint)image.Width,
             (uint)image.Height,
             f
-            );
+        );
         VTFFile.ImageSetData(Frame, Face, Slice, MipmapLevel, buffer2);
-        SaveVTF();
+        SaveVtf();
     }
 
     public void SetNewImage(Image<Rgba32> image)
     {
+        if (!_vtfData!.Bind())
+        {
+            return;
+        }
+
         _isModified = true;
         byte[] buffer = GetRgba888FromImage(image, out bool hasAlpha);
         var createOptions = new SVTFCreateOptions();
-        VTFFile.BindImage(imageIndex);
         VTFFile.ImageCreateDefaultCreateStructure(ref createOptions);
-        createOptions.imageFormat = hasAlpha ?
-                                    VTFImageFormat.IMAGE_FORMAT_DXT5 :
-                                    VTFImageFormat.IMAGE_FORMAT_DXT1;
+        createOptions.imageFormat =
+            hasAlpha ? VTFImageFormat.IMAGE_FORMAT_DXT5 : VTFImageFormat.IMAGE_FORMAT_DXT1;
         if (!VTFFile.ImageCreateSingle(
-            (uint)image.Width,
-            (uint)image.Height,
-            buffer,
-            ref createOptions))
+                (uint)image.Width,
+                (uint)image.Height,
+                buffer,
+                ref createOptions))
         {
             string err = VTFAPI.GetLastError();
             Console.WriteLine(err);
         }
 
-        SaveVTF();
+        SaveVtf();
     }
 
-    public void SaveVTF()
+    public void SaveVtf()
     {
         var vtfBuffer = new byte[VTFFile.ImageGetSize()];
         _entry.DataStream = new MemoryStream(vtfBuffer);
@@ -277,23 +200,8 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
             string err = VTFAPI.GetLastError();
             Console.WriteLine(err);
         }
+
         _entry.DataStream.Seek(0, SeekOrigin.Begin);
-    }
-
-    private static Image<Rgba32> GetImageFromRgba8888(byte[] img, int width, int height)
-    {
-        var rgba = new Rgba32[width * height];
-        int j = 0;
-        for (int i = 0; i < img.Length; i += 4)
-        {
-            rgba[j++] = new Rgba32(
-                img[i],
-                img[i + 1],
-                img[i + 2],
-                img[i + 3]);
-        }
-
-        return SixLabors.ImageSharp.Image.LoadPixelData<Rgba32>(rgba.AsSpan(), width, height);
     }
 
     private static byte[] GetRgba888FromImage(Image<Rgba32> image, out bool hasAlpha)
@@ -316,6 +224,7 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
                     hasAlpha = true;
             }
         }
+
         return buffer;
     }
 
