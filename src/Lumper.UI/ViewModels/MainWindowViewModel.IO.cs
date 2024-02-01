@@ -9,6 +9,7 @@ using Avalonia.Platform.Storage;
 using Lumper.Lib.BSP;
 using Lumper.Lib.BSP.IO;
 using Lumper.UI.ViewModels.Bsp;
+using Lumper.UI.ViewModels.VtfBrowser;
 using MessageBox.Avalonia;
 using MessageBox.Avalonia.Enums;
 using ReactiveUI;
@@ -150,9 +151,11 @@ public partial class MainWindowViewModel
 
     private void LoadBsp(string path)
     {
+        VtfBrowserViewModel.ClearTextures();
         var bspFile = new BspFile(path);
         BspModel = new BspViewModel(bspFile);
         TasksModel = new Tasks.TasksViewModel(bspFile);
+        VtfBrowserModel = new VtfBrowserViewModel();
         Content = BspModel;
     }
 
