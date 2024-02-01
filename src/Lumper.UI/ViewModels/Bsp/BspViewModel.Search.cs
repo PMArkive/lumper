@@ -40,6 +40,6 @@ public partial class BspViewModel
             return;
         //TODO: Add lock when search is slower than throttle rate
         var matcher = matcherBase.ConstructMatcher(pattern.Trim());
-        await bspNode.Filter(matcher);
+        await bspNode!.Filter(matcher);
     }
 }
