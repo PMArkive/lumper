@@ -39,7 +39,7 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
         get => _isModified;
     }
 
-    public Image<Rgba32>? _image = null;
+    private Image<Rgba32>? _image = null;
 
     public Image<Rgba32>? Image
     {
@@ -95,35 +95,31 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
         }
     }
 
-    public uint FrameMax => _vtfData?._frameCount - 1 ?? 0;
-    public uint FaceMax => _vtfData?._faceCount - 1 ?? 0;
-    public uint MipmapMax => _vtfData?._mipmapCount - 1 ?? 0;
+    public uint FrameMax => _vtfData?.FrameCount - 1 ?? 0;
+    public uint FaceMax => _vtfData?.FaceCount - 1 ?? 0;
+    public uint MipmapMax => _vtfData?.MipmapCount - 1 ?? 0;
 
     private VtfFileData? _vtfData;
 
     public override void Open()
     {
-        //can't get length for byte array from LzmaStream
-        //so we need to read to a different stream first
-        using var mem = new MemoryStream();
-        _entry.DataStream.CopyTo(mem);
-        _vtfData = new VtfFileData(mem.ToArray());
+        _vtfData = new VtfFileData(_entry.DataStream);
 
         this.RaisePropertyChanged(nameof(FrameMax));
         this.RaisePropertyChanged(nameof(FaceMax));
         this.RaisePropertyChanged(nameof(MipmapMax));
 
-        Info = $"MajorVersion: {VTFFile.ImageGetMajorVersion()}\n" +
-               $"MinorVersion: {VTFFile.ImageGetMinorVersion()}\n" +
-               $"Size: {VTFFile.ImageGetSize()}\n" +
-               $"Width: {VTFFile.ImageGetWidth()}\n" +
-               $"Height: {VTFFile.ImageGetHeight()}\n" +
-               $"Format: {Enum.GetName(VTFFile.ImageGetFormat())}\n" +
-               $"Depth: {_vtfData._depth}\n" +
-               $"FrameCount: {_vtfData._frameCount}\n" +
-               $"FaceCount: {_vtfData._faceCount}\n" +
-               $"MipmapCount: {_vtfData._mipmapCount}\n" +
-               $"Flags: {_vtfData._flags.ToString().Replace(",", "\n")}\n";
+        Info = $"MajorVersion: {_vtfData.MajorVersion}\n" +
+               $"MinorVersion: {_vtfData.MinorVersion}\n" +
+               $"Size: {_vtfData.ImageSize}\n" +
+               $"Width: {_vtfData.ImageWidth}\n" +
+               $"Height: {_vtfData.ImageHeight}\n" +
+               $"Format: {Enum.GetName(_vtfData.ImageFormat)}\n" +
+               $"Depth: {_vtfData.Depth}\n" +
+               $"FrameCount: {_vtfData.FrameCount}\n" +
+               $"FaceCount: {_vtfData.FaceCount}\n" +
+               $"MipmapCount: {_vtfData.MipmapCount}\n" +
+               $"Flags: {_vtfData.Flags.ToString().Replace(",", "\n")}\n";
 
         UpdateImage();
     }
@@ -140,92 +136,26 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
 
     public void SetImageData(Image<Rgba32> image)
     {
-        if (!_vtfData!.Bind())
+        if(_vtfData == null)
         {
             return;
         }
 
         _isModified = true;
-        byte[] buffer = GetRgba888FromImage(image, out _);
-
-        var f = VTFFile.ImageGetFormat();
-        int size = (int)VTFFile.ImageComputeImageSize(
-            (uint)image.Width, (uint)image.Height, 1, 1, f);
-        byte[] buffer2 = new byte[size];
-        VTFFile.ImageConvertFromRGBA8888(
-            buffer,
-            buffer2,
-            (uint)image.Width,
-            (uint)image.Height,
-            f
-        );
-        VTFFile.ImageSetData(Frame, Face, Slice, MipmapLevel, buffer2);
-        SaveVtf();
+        _vtfData.SetImageData(image, Frame, Face, Slice, MipmapLevel);
+        UpdateImage();
     }
 
     public void SetNewImage(Image<Rgba32> image)
     {
-        if (!_vtfData!.Bind())
+        if(_vtfData == null)
         {
             return;
         }
 
         _isModified = true;
-        byte[] buffer = GetRgba888FromImage(image, out bool hasAlpha);
-        var createOptions = new SVTFCreateOptions();
-        VTFFile.ImageCreateDefaultCreateStructure(ref createOptions);
-        createOptions.imageFormat =
-            hasAlpha ? VTFImageFormat.IMAGE_FORMAT_DXT5 : VTFImageFormat.IMAGE_FORMAT_DXT1;
-        if (!VTFFile.ImageCreateSingle(
-                (uint)image.Width,
-                (uint)image.Height,
-                buffer,
-                ref createOptions))
-        {
-            string err = VTFAPI.GetLastError();
-            Console.WriteLine(err);
-        }
-
-        SaveVtf();
-    }
-
-    public void SaveVtf()
-    {
-        var vtfBuffer = new byte[VTFFile.ImageGetSize()];
-        _entry.DataStream = new MemoryStream(vtfBuffer);
-
-        uint uiSize = 0;
-        if (!VTFFile.ImageSaveLump(vtfBuffer, (uint)vtfBuffer.Length, ref uiSize))
-        {
-            string err = VTFAPI.GetLastError();
-            Console.WriteLine(err);
-        }
-
-        _entry.DataStream.Seek(0, SeekOrigin.Begin);
-    }
-
-    private static byte[] GetRgba888FromImage(Image<Rgba32> image, out bool hasAlpha)
-    {
-        int size = image.Width * image.Height * 4;
-        using var mem = new MemoryStream();
-        var buffer = new byte[size];
-        int i = 0;
-        hasAlpha = false;
-        for (int y = 0; y < image.Height; y++)
-        {
-            for (int x = 0; x < image.Width; x++)
-            {
-                Rgba32 pixel = image[x, y];
-                buffer[i++] = pixel.R;
-                buffer[i++] = pixel.G;
-                buffer[i++] = pixel.B;
-                buffer[i++] = pixel.A;
-                if (!hasAlpha && pixel.A != 255)
-                    hasAlpha = true;
-            }
-        }
-
-        return buffer;
+        _vtfData.SetNewImage(image);
+        UpdateImage();
     }
 
     public override void Update()

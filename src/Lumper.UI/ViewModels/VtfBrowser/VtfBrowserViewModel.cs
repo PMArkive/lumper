@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -16,13 +17,14 @@ public partial class VtfBrowserViewModel : ViewModelBase
     public class Vtf : ReactiveObject
     {
         private Image<Rgba32>? _image;
-        private string _name = "";
 
         public Image<Rgba32>? Image
         {
             get => _image;
             set => this.RaiseAndSetIfChanged(ref _image, value);
         }
+
+        private string _name = "";
 
         public string Name
         {
@@ -43,6 +45,7 @@ public partial class VtfBrowserViewModel : ViewModelBase
         }
     }
 
+    // 8 is how much the text will be offset from the sides, so 4px left and 4px right
     public uint MaxNameWidth => (uint)_dimensions - 8;
 
     private bool _showCubemaps;
@@ -58,7 +61,10 @@ public partial class VtfBrowserViewModel : ViewModelBase
         }
     }
 
-    [GeneratedRegex(@"^((c-?\d+_-?\d+_-?\d+)|cubemapdefault)[\.hdr]{0,}\.vtf$")]
+    // matches cubemap names which are formatted as cX_cY_cZ.vtf or cubemapdefault.vtf, including .hdr.vtf versions
+    // X Y Z are the cubemap's origin
+    // https://github.com/ValveSoftware/source-sdk-2013/blob/master/mp/src/utils/vbsp/cubemap.cpp
+    [GeneratedRegex(@"^((c-?\d+_-?\d+_-?\d+)|cubemapdefault)(\.hdr){0,}\.vtf$")]
     private static partial Regex _rgxCubemap();
 
     private static ObservableCollection<Vtf> _textureBrowserItems =
@@ -68,7 +74,7 @@ public partial class VtfBrowserViewModel : ViewModelBase
     {
         get
         {
-            var isGlobPattern = TextureSearch.Contains('*') || TextureSearch.Contains('?');
+            bool isGlobPattern = TextureSearch.Contains('*') || TextureSearch.Contains('?');
             var matcher = isGlobPattern
                 ? new GlobMatcher(TextureSearch, false, true)
                 : new GlobMatcher($"*{TextureSearch}*", false, true);
@@ -106,10 +112,7 @@ public partial class VtfBrowserViewModel : ViewModelBase
 
     public static void AddTexture(PakFileEntry entry, string name)
     {
-        //duplicate code from PakFileEntryVtfViewModel::Open
-        using var mem = new MemoryStream();
-        entry.DataStream.CopyTo(mem);
-        var vtfFileData = new VtfFileData(mem.ToArray());
+        var vtfFileData = new VtfFileData(entry.DataStream);
 
         _textureBrowserItems.Add(new Vtf
         {

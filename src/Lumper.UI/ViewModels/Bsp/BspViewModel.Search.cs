@@ -33,13 +33,13 @@ public partial class BspViewModel
     }
 
     private static async void Search(
-        (string?, MatcherBase?, BspNodeBase?) args)
+        (string?, MatcherBase?, BspNodeBase) args)
     {
         (string? pattern, var matcherBase, var bspNode) = args;
         if (matcherBase is null || pattern is null)
             return;
         //TODO: Add lock when search is slower than throttle rate
         var matcher = matcherBase.ConstructMatcher(pattern.Trim());
-        await bspNode!.Filter(matcher);
+        await bspNode.Filter(matcher);
     }
 }
