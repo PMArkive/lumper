@@ -4,7 +4,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace Lumper.UI.ViewModels.VtfBrowser;
 
-public class VtfImageWindowViewModel : ViewModelBase
+public class VtfBrowserItemViewModel : ViewModelBase
 {
     private string _name = "";
 

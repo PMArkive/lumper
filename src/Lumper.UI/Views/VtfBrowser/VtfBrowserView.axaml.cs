@@ -19,11 +19,10 @@ public partial class VtfBrowserView : UserControl
 
     private void Item_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        var selectedVtf = (VtfBrowserViewModel.Vtf)((Border)sender!).DataContext!;
+        var selectedVtf = (VtfBrowserItemViewModel)((Border)sender!).DataContext!;
 
         var window = new VtfImageWindow();
-        window.DataContext = new VtfImageWindowViewModel
-            { Image = selectedVtf.Image, Name = selectedVtf.Name };
+        window.DataContext = selectedVtf;
         window.Show();
     }
 }

@@ -9,7 +9,7 @@
         Title="{Binding Name}">
 
     <Window.DataContext>
-        <vm:VtfImageWindowViewModel />
+        <vm:VtfBrowserItemViewModel />
     </Window.DataContext>
 
     <Window.Resources>

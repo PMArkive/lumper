@@ -14,25 +14,6 @@ namespace Lumper.UI.ViewModels.VtfBrowser;
 
 public partial class VtfBrowserViewModel : ViewModelBase
 {
-    public class Vtf : ReactiveObject
-    {
-        private Image<Rgba32>? _image;
-
-        public Image<Rgba32>? Image
-        {
-            get => _image;
-            set => this.RaiseAndSetIfChanged(ref _image, value);
-        }
-
-        private string _name = "";
-
-        public string Name
-        {
-            get => _name;
-            set => this.RaiseAndSetIfChanged(ref _name, value);
-        }
-    }
-
     private double _dimensions = 128;
 
     public double Dimensions
@@ -67,10 +48,10 @@ public partial class VtfBrowserViewModel : ViewModelBase
     [GeneratedRegex(@"^((c-?\d+_-?\d+_-?\d+)|cubemapdefault)(\.hdr){0,}\.vtf$")]
     private static partial Regex _rgxCubemap();
 
-    private static ObservableCollection<Vtf> _textureBrowserItems =
-        new ObservableCollection<Vtf>();
+    private static ObservableCollection<VtfBrowserItemViewModel> _textureBrowserItems =
+        new ObservableCollection<VtfBrowserItemViewModel>();
 
-    public ObservableCollection<Vtf> TextureBrowserItems
+    public ObservableCollection<VtfBrowserItemViewModel> TextureBrowserItems
     {
         get
         {
@@ -81,7 +62,7 @@ public partial class VtfBrowserViewModel : ViewModelBase
 
             var localMatcher = matcher;
 
-            return new ObservableCollection<Vtf>(
+            return new ObservableCollection<VtfBrowserItemViewModel>(
                 _textureBrowserItems.Where(t => // delegate allocation but other way is ugly lol
                 {
                     if (!_showCubemaps && _rgxCubemap().IsMatch(t.Name))
@@ -114,7 +95,7 @@ public partial class VtfBrowserViewModel : ViewModelBase
     {
         var vtfFileData = new VtfFileData(entry.DataStream);
 
-        _textureBrowserItems.Add(new Vtf
+        _textureBrowserItems.Add(new VtfBrowserItemViewModel
         {
             Name = name,
             Image = vtfFileData.GetImage(0, 0, 0, 0)
