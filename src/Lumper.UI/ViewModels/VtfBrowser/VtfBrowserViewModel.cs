@@ -1,8 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Lumper.Lib.BSP.Lumps.BspLumps;
 using Lumper.Lib.BSP.Struct;
 using Lumper.UI.Models;
 using Lumper.UI.Models.Matchers;
@@ -14,6 +16,16 @@ namespace Lumper.UI.ViewModels.VtfBrowser;
 
 public partial class VtfBrowserViewModel : ViewModelBase
 {
+    public VtfBrowserViewModel(PakFileLump pakFileLump)
+    {
+        var entries = pakFileLump.Entries.Where(
+            x => x.Key.ToLower().EndsWith(".vtf"));
+        foreach (var entry in entries)
+        {
+            //todo name instead of key
+            AddTexture(entry, entry.Key);
+        }
+    }
     private double _dimensions = 128;
 
     public double Dimensions
@@ -48,8 +60,8 @@ public partial class VtfBrowserViewModel : ViewModelBase
     [GeneratedRegex(@"^((c-?\d+_-?\d+_-?\d+)|cubemapdefault)(\.hdr){0,}\.vtf$")]
     private static partial Regex _rgxCubemap();
 
-    private static ObservableCollection<VtfBrowserItemViewModel> _textureBrowserItems =
-        new ObservableCollection<VtfBrowserItemViewModel>();
+    private ObservableCollection<VtfBrowserItemViewModel> _textureBrowserItems =
+        new();
 
     public ObservableCollection<VtfBrowserItemViewModel> TextureBrowserItems
     {
@@ -91,7 +103,7 @@ public partial class VtfBrowserViewModel : ViewModelBase
 
     public string TexturesCount => $"{TextureBrowserItems.Count} Items";
 
-    public static void AddTexture(PakFileEntry entry, string name)
+    private void AddTexture(PakFileEntry entry, string name)
     {
         var vtfFileData = new VtfFileData(entry.DataStream);
 
@@ -100,10 +112,5 @@ public partial class VtfBrowserViewModel : ViewModelBase
             Name = name,
             Image = vtfFileData.GetImage(0, 0, 0, 0)
         });
-    }
-
-    public static void ClearTextures()
-    {
-        _textureBrowserItems.Clear();
     }
 }

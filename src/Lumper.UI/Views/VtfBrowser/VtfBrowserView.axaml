@@ -11,10 +11,6 @@
         <converters:BitmapAssetValueConverter x:Key="variableImage" />
     </UserControl.Resources>
 
-    <UserControl.DataContext>
-        <vm:VtfBrowserViewModel />
-    </UserControl.DataContext>
-
     <Grid RowDefinitions="*, Auto">
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
             <ItemsControl HorizontalAlignment="Center" Items="{Binding TextureBrowserItems}">

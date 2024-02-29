@@ -16,7 +16,6 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
         PakFileEntry entry, string name)
         : base(parent, entry, name)
     {
-        VtfBrowserViewModel.AddTexture(entry, name);
     }
 
     public override BspNodeBase? ViewNode => this;
@@ -136,7 +135,7 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
 
     public void SetImageData(Image<Rgba32> image)
     {
-        if(_vtfData == null)
+        if (_vtfData == null)
         {
             return;
         }
@@ -148,7 +147,7 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
 
     public void SetNewImage(Image<Rgba32> image)
     {
-        if(_vtfData == null)
+        if (_vtfData == null)
         {
             return;
         }
