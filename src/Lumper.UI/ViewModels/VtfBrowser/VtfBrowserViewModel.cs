@@ -106,6 +106,6 @@ public partial class VtfBrowserViewModel : ViewModelBase
     private void AddTexture(PakFileEntry entry, string name)
     {
         _textureBrowserItems.Add(new VtfBrowserItemViewModel(
-            name, new VtfFileData(entry.DataStream)));
+            name, new VtfFileData(entry)));
     }
 }

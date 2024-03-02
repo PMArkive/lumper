@@ -102,7 +102,7 @@ public class PakFileEntryVtfViewModel : PakFileEntryLeafViewModel
 
     public override void Open()
     {
-        _vtfData = new VtfFileData(_entry.DataStream);
+        _vtfData = new VtfFileData(_entry);
 
         this.RaisePropertyChanged(nameof(FrameMax));
         this.RaisePropertyChanged(nameof(FaceMax));

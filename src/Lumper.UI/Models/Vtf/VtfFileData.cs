@@ -4,12 +4,13 @@ using System.Runtime.InteropServices;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using VTFLib;
+using Lumper.Lib.BSP.Struct;
 
 namespace Lumper.UI.Models;
 
 public class VtfFileData
 {
-    private Stream _dataStream;
+    private readonly PakFileEntry _entry;
     private readonly uint _imageIndex;
 
     private uint _frameCount;
@@ -40,11 +41,11 @@ public class VtfFileData
     {
         VTFAPI.Initialize();
     }
-    public VtfFileData(Stream dataStream)
+    public VtfFileData(PakFileEntry entry)
     {
-        _dataStream = dataStream;
+        _entry = entry;
         using var mem = new MemoryStream();
-        _dataStream.CopyTo(mem);
+        _entry.DataStream.CopyTo(mem);
         byte[] vtfBuffer = mem.ToArray();
 
         VTFFile.CreateImage(ref _imageIndex);
@@ -112,6 +113,7 @@ public class VtfFileData
 
     public void SetNewImage(Image<Rgba32> image)
     {
+        VTFFile.BindImage(_imageIndex);
         byte[] buffer = GetRgba8888FromImage(image, out bool hasAlpha);
         var createOptions = new SVTFCreateOptions();
         VTFFile.ImageCreateDefaultCreateStructure(ref createOptions);
@@ -136,7 +138,7 @@ public class VtfFileData
         System.Diagnostics.Debug.WriteLine("Size: " + size);
 
         var vtfBuffer = new byte[size];
-        _dataStream = new MemoryStream(vtfBuffer);
+        _entry.DataStream = new MemoryStream(vtfBuffer);
 
         uint uiSize = 0;
         if (!VTFFile.ImageSaveLump(vtfBuffer, (uint)vtfBuffer.Length, ref uiSize))
@@ -146,7 +148,7 @@ public class VtfFileData
         }
 
         //VTFFile.ImageLoadLump(vtfBuffer, (uint)vtfBuffer.Length, false);
-        _dataStream.Seek(0, SeekOrigin.Begin);
+        _entry.DataStream.Seek(0, SeekOrigin.Begin);
         Update();
     }
 
