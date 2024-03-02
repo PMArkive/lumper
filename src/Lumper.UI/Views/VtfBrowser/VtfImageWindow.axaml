@@ -8,10 +8,6 @@
         x:Class="Lumper.UI.Views.VtfBrowser.VtfImageWindow"
         Title="{Binding Name}">
 
-    <Window.DataContext>
-        <vm:VtfBrowserItemViewModel />
-    </Window.DataContext>
-
     <Window.Resources>
         <converters:BitmapAssetValueConverter x:Key="variableImage" />
     </Window.Resources>
