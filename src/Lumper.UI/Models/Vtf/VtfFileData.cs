@@ -36,6 +36,10 @@ public class VtfFileData
     public uint ImageHeight => _imageHeight;
     public VTFImageFormat ImageFormat => _imageFormat;
 
+    static VtfFileData()
+    {
+        VTFAPI.Initialize();
+    }
     public VtfFileData(Stream dataStream)
     {
         _dataStream = dataStream;
@@ -43,10 +47,8 @@ public class VtfFileData
         _dataStream.CopyTo(mem);
         byte[] vtfBuffer = mem.ToArray();
 
-        VTFAPI.Initialize();
-
         VTFFile.CreateImage(ref _imageIndex);
-       
+
         VTFFile.BindImage(_imageIndex);
         VTFFile.ImageLoadLump(vtfBuffer, (uint)vtfBuffer.Length, false);
 
