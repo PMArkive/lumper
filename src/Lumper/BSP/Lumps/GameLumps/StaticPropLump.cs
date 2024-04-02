@@ -19,6 +19,7 @@ namespace Lumper.Lib.BSP.Lumps.GameLumps
         V10 = 100,
         V11 = 110,
         V12 = 120,
+        V13 = 130,
     }
     public class StaticPropLump : FixedLump<GameLumpType, StaticProp>
     {
@@ -36,6 +37,7 @@ namespace Lumper.Lib.BSP.Lumps.GameLumps
             StaticPropVersion.V10 => 76,
             StaticPropVersion.V11 => 80,
             StaticPropVersion.V12 => 80,
+            StaticPropVersion.V13 => 88,
             _ => 1
         };
 
@@ -52,6 +54,7 @@ namespace Lumper.Lib.BSP.Lumps.GameLumps
                 10 => StaticPropVersion.V10,
                 11 => StaticPropVersion.V11,
                 12 => StaticPropVersion.V12,
+                13 => StaticPropVersion.V13,
                 _ => StaticPropVersion.Unknown
             };
         }
@@ -155,7 +158,28 @@ namespace Lumper.Lib.BSP.Lumps.GameLumps
                 prop.FlagsEx = reader.ReadUInt32();
             // since v11
             if (ActualVersion >= StaticPropVersion.V11)
-                prop.UniformScale = System.BitConverter.ToSingle(reader.ReadBytes(4));
+            {
+                float x = System.BitConverter.ToSingle(reader.ReadBytes(4));
+                if (ActualVersion < StaticPropVersion.V13)
+                {
+                    prop.UniformScale = new Vector()
+                    {
+                        X = x,
+                        Y = x,
+                        Z = x,
+                    };
+                }
+                else
+                {
+                    prop.UniformScale = new Vector()
+                    {
+                        X = x,
+                        Y = System.BitConverter.ToSingle(reader.ReadBytes(4)),
+                        Z = System.BitConverter.ToSingle(reader.ReadBytes(4)),
+                    };
+                }
+            }
+
             Data.Add(prop);
             if (reader.BaseStream.Position - startpos != StructureSize)
                 throw new InvalidDataException($"StaticProp structuresize doesn't match reader position after read ({reader.BaseStream.Position - startpos} != {StructureSize})");
@@ -231,9 +255,22 @@ namespace Lumper.Lib.BSP.Lumps.GameLumps
             // since v10
             if (ActualVersion >= StaticPropVersion.V10)
                 writer.Write(prop.FlagsEx);
-            // since v11
-            if (ActualVersion >= StaticPropVersion.V11)
-                writer.Write(prop.UniformScale);
+            // v11/v12
+            if (ActualVersion == StaticPropVersion.V11 ||
+                ActualVersion == StaticPropVersion.V12)
+            {
+                if (prop.UniformScale.X == prop.UniformScale.Y &&
+                prop.UniformScale.X == prop.UniformScale.Y)
+                    writer.Write(prop.UniformScale.X);
+                else
+                    throw new InvalidDataException("UniformScale only supports one value in version 11/12");
+            }
+            if (ActualVersion >= StaticPropVersion.V13)
+            {
+                writer.Write(prop.UniformScale.X);
+                writer.Write(prop.UniformScale.Y);
+                writer.Write(prop.UniformScale.Z);
+            }
             if (writer.BaseStream.Position - startPos != StructureSize)
                 throw new InvalidDataException($"StaticProp structuresize doesn't match writer position after write ({writer.BaseStream.Position - startPos} != {StructureSize})");
         }
