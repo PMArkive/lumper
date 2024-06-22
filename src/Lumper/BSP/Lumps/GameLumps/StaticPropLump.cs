@@ -73,6 +73,7 @@ namespace Lumper.Lib.BSP.Lumps.GameLumps
                 StaticPropVersion.V10 => 10,
                 StaticPropVersion.V11 => 11,
                 StaticPropVersion.V12 => 12,
+                StaticPropVersion.V13 => 13,
                 _ => 0
             };
         }
