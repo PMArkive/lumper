@@ -2,35 +2,40 @@ namespace Lumper.CLI;
 
 using CommandLine;
 
+[Flags]
 public enum JsonOptions
 {
-    Default,
-    SortLumps,
-    SortProperties,
-    IgnoreOffset
+    SortLumps = 0x1,
+    SortProperties = 0x2,
+    IgnoreOffset = 0x4
 }
 
 public class CommandLineOptions
 {
-    [Value(index: 0, Required = false, HelpText = "BSP file path")]
-    public string? Path { get; set; }
+    [Value(index: 0, Required = true, MetaName = "BSP File", HelpText = "Path to input BSP file")]
+    public required string Path { get; set; }
 
-    private const string JsonOptionName = "json";
+    [Option('j',
+        "json",
+        Default = null,
+        Required = false,
+        HelpText = "Output JSON summary of the BSP to <directory containing BSP file>/<bsp file name>.json")]
+    public bool JsonDump { get; set; }
 
-    [Option(JsonOptionName,
-        Separator = ',',
-        // Required because its the only thing the cli can do for now :)
-        Required = true,
-        HelpText = "Export to JSON (for comparison)")]
-    public IEnumerable<JsonOptions>? Json { get; set; }
+    [Option('J',
+        "jsonPath",
+        Default = null,
+        Required = false,
+        HelpText =
+            "Output JSON summary of the BSP the given path, relative to current directory. If given, --json can be omitted.")]
+    public string? JsonPath { get; set; }
 
-    public static void ErrorHandler(IEnumerable<Error> errors)
-    {
-        if (errors.Any(x
-                => x is BadFormatConversionError or MissingValueOptionError &&
-                   ((NamedError)x).NameInfo.LongName == JsonOptionName))
-        {
-            Console.WriteLine("Available JSON options: " + string.Join(", ", Enum.GetNames(typeof(JsonOptions))));
-        }
-    }
+    [Option('k',
+        "jsonOpts",
+        Default = CLI.JsonOptions.SortLumps | CLI.JsonOptions.SortProperties | CLI.JsonOptions.IgnoreOffset,
+        Required = false,
+        HelpText =
+            "Provide either flags (1 = Sort Lumps, 2 = Sort Properties, 4 = Ignore Offsets)," +
+            " or comma-separator list of names, e.g. sortproperties,ignoreoffsets.")]
+    public JsonOptions JsonOptions { get; set; }
 }
