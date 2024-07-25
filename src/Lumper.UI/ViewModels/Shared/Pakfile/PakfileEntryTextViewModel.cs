@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Lib.BSP.Struct;
 using NLog;
+using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using Views.Shared.Pakfile;
 
@@ -24,7 +25,11 @@ public class PakfileEntryTextViewModel : PakfileEntryViewModel
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
     public PakfileEntryTextViewModel(PakfileEntry entry, BspNode parent) : base(entry, parent)
-        => RegisterView<PakfileEntryTextViewModel, PakfileEntryTextView>();
+    {
+        RegisterView<PakfileEntryTextViewModel, PakfileEntryTextView>();
+
+        this.WhenAnyValue(x => x.Content).Subscribe(x => UpdateHash(x ?? string.Empty));
+    }
 
     public override void Load(CancellationTokenSource? cts = null)
     {

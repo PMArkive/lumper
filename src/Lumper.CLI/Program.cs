@@ -1,56 +1,30 @@
 namespace Lumper.CLI;
 
+using System.Diagnostics;
 using CommandLine;
 using CommandLine.Text;
-using Lib.BSP;
+using Lumper.Lib.BSP;
+using Lumper.Lib.Bsp.Enum;
+using Lumper.Lib.Jobs;
 using NLog;
+using NLog.Config;
 using NLog.Targets;
 
 internal sealed class Program
 {
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
-    private static readonly string
-        Version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "Unknown Version";
+    private static bool _shouldWriteOutput;
 
-    /// <summary>
-    /// The main application logic of the program, called once the command line options have been parsed.
-    ///
-    /// It can throw at any point, and the exception will be caught and program will exit with non-zero
-    /// status code.
-    ///
-    /// If method completes successfully, the program will exit with status code 0.
-    /// </summary>
-    private static void Run(CommandLineOptions options)
-    {
-        var bspFile = BspFile.FromPath(options.Path, null);
-
-        if (bspFile is null)
-            throw new InvalidDataException("Failed to load BSP file");
-
-        if (options.JsonDump || options.JsonPath is not null)
-        {
-            bspFile.JsonDump(
-                options.JsonPath ?? null,
-                null,
-                sortLumps: options.JsonOptions.HasFlag(JsonOptions.SortLumps),
-                sortProperties: options.JsonOptions.HasFlag(JsonOptions.SortProperties),
-                ignoreOffset: options.JsonOptions.HasFlag(JsonOptions.IgnoreOffset));
-        }
-
-
-    }
-
-    /// <summary>
-    /// Parses CLI options and wraps the main application logic with exception handling.
-    /// </summary>
     public static int Main(string[] args)
     {
-        // Dig out the console target to remove date and other crap from layout.
-        LogManager.Configuration.LoggingRules
-            .Select(rule => rule.Targets.First())
-            .OfType<ConsoleTarget>()
-            .First().Layout = "${message:withException=true}";
+        LoggingRule consoleRule =
+            LogManager.Configuration.LoggingRules.First(rule => rule.Targets.First() is ColoredConsoleTarget);
+
+        // Remove date and other crap from layout. This is good for file logs but here
+        // we want to just print messages directly.
+        // https://github.com/NLog/NLog/wiki/Layouts
+        consoleRule.Targets.OfType<ColoredConsoleTarget>().First().Layout = "${message:withException=true}";
 
         ParserResult<CommandLineOptions> parserResult = new Parser(with =>
         {
@@ -60,42 +34,134 @@ internal sealed class Program
             with.AutoVersion = true;
         }).ParseArguments<CommandLineOptions>(args);
 
-        return parserResult.MapResult(
-            options =>
-            {
-                try
-                {
-                    Run(options);
-                    return 0;
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error(ex);
-                    return 1;
-                }
-            },
-            errors =>
-            {
-                // ReSharper disable PossibleMultipleEnumeration
-                if (errors.IsVersion())
-                {
-                    Logger.Info($"Lumper CLI v{Version}");
-                    return 0;
-                }
+        if (parserResult.Errors.Any())
+            return ShowHelp(parserResult);
 
-                Logger.Info(HelpText.AutoBuild(parserResult,
-                    h =>
-                    {
-                        h.Heading = $"Lumper CLI v{Version}\nhttps://github.com/momentum-mod/lumper";
-                        h.AddNewLineBetweenHelpSections = false;
-                        h.AdditionalNewLineAfterOption = false;
-                        h.MaximumDisplayWidth = 120;
-                        h.Copyright = "";
-                        return HelpText.DefaultParsingErrorsHandler(parserResult, h);
+        CommandLineOptions options = parserResult.Value;
+
+        consoleRule.SetLoggingLevels(options.Verbose ? LogLevel.Debug : LogLevel.Info, LogLevel.Fatal);
+        try
+        {
+            Run(options);
+            return 0;
+        }
+        catch
+            (Exception ex)
+        {
+            Logger.Error(ex);
+            return 1;
+        }
+    }
+
+    // The main application logic of the program, called once the command line options have been parsed.
+    //
+    // It can throw at any point, and the exception will be caught and program will exit with non-zero
+    // status code.
+    //
+    // If method completes successfully, the program will exit with status code 0.
+    private static void Run(CommandLineOptions options)
+    {
+        var bspFile = BspFile.FromPath(options.InputPath, null);
+
+        if (bspFile is null)
+            throw new InvalidDataException("Failed to load BSP file");
+
+        if (options.JobWorkflow is { } workflowPath)
+            RunWorkflow(bspFile, workflowPath);
+
+        if (_shouldWriteOutput || options.Compress || options.DontCompress)
+        {
+            DesiredCompression compression = DesiredCompression.Unchanged;
+            if (options.Compress)
+                compression = DesiredCompression.Compressed;
+            else if (options.DontCompress)
+                compression = DesiredCompression.Uncompressed;
+
+            bspFile.SaveToFile(options.OutputPath ?? null, compression, null, !options.SkipBackup);
+        }
+
+        if (options.JsonDump || options.JsonPath is not null)
+            JsonDump(bspFile, options);
+    }
+
+    private static void JsonDump(BspFile bspFile, CommandLineOptions options)
+        => bspFile.JsonDump(
+            options.JsonPath ?? null,
+            null,
+            sortLumps: options.JsonOptions.HasFlag(JsonOptions.SortLumps),
+            sortProperties: options.JsonOptions.HasFlag(JsonOptions.SortProperties),
+            ignoreOffset: options.JsonOptions.HasFlag(JsonOptions.IgnoreOffset));
+
+    private static void RunWorkflow(BspFile bspFile, string workflowPath)
+    {
+        if (!File.Exists(workflowPath))
+        {
+            Logger.Warn("Could not find workflow file");
+            return;
+        }
+
+        using FileStream stream = File.OpenRead(workflowPath);
+        if (!Job.TryLoadWorkflow(stream, out List<Job>? workflow))
+            return; // TryLoadWorkflow logs any exceptions
+
+        Logger.Info("Loaded workflow file");
+        foreach (Job job in workflow)
+        {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            Logger.Info($"Running job: {job.JobNameInternal}");
+
+            if (job.Run(bspFile))
+                _shouldWriteOutput = true;
+
+            stopwatch.Stop();
+            Logger.Info($"Job completed in {stopwatch.ElapsedMilliseconds}ms");
+        }
+    }
+
+    private static int ShowHelp(ParserResult<CommandLineOptions> parserResult)
+    {
+        // ReSharper disable PossibleMultipleEnumeration
+        IEnumerable<Error>? errors = parserResult.Errors;
+        var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "Unknown Version";
+        if (errors.IsVersion())
+        {
+            Logger.Info($"Lumper CLI v{version}");
+            return 0;
+        }
+
+        Logger.Info(HelpText.AutoBuild(parserResult,
+            h =>
+            {
+                h.Heading = $"Lumper CLI v{version} [https://github.com/momentum-mod/lumper]";
+                h.AddNewLineBetweenHelpSections = false;
+                h.AdditionalNewLineAfterOption = false;
+                h.Copyright = "";
+                h.MaximumDisplayWidth = 100;
+                // Custom comparator to put values above options - by default options are first
+                // which I hate!!!
+                h.OptionComparison = (a, b) => a.IsOption switch {
+                    true when b.IsOption => a.Required switch {
+                        true when !b.Required => -1,
+                        false when b.Required => 1,
+                        _ => 0
                     },
-                    e => e));
+                    true when b.IsValue => 1,
+                    _ => -1
+                };
+                h.AddPostOptionsLines(
+                    [
+                        "Without options, Lumper will simply read the BSP file and exit.",
+                        "If any options provided cause modifications, the BSP will be output to the same path.",
+                        "If you want to output to a different path, use the -o option.",
+                        "If -c or -C are given, an output file will always be produced, even if unmodified.",
+                        "If neither -c or -C are given and a BSP is output, BSP will be written in its current state."
+                    ]
+                );
+                return HelpText.DefaultParsingErrorsHandler(parserResult, h);
+            },
+            e => e));
 
-                return errors.IsHelp() ? 0 : 1;
-            });
+        return errors.IsHelp() ? 0 : 1;
     }
 }

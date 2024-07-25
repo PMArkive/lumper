@@ -1,23 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  
+  <Import Project="../../BuildShared.props" />
+  
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
     <ApplicationIcon>Assets\Images\Lumper.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <OutputPath>../../build</OutputPath>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
-    <!-- Disable trim warnings - these are prooooobably okay -->
-    <NoWarn>IL2026,IL2104</NoWarn>
-    <UseCommonOutputDirectory>true</UseCommonOutputDirectory>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,41 +14,47 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.1.0-rc1"/>
+    <PackageReference Include="Avalonia" Version="11.1.0"/>
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.0.6"/>
-    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.0-rc1"/>
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.0"/>
     <PackageReference Include="Avalonia.Controls.TreeDataGrid" Version="11.0.10"/>
-    <PackageReference Include="Avalonia.Desktop" Version="11.1.0-rc1"/>
+    <PackageReference Include="Avalonia.Desktop" Version="11.1.0"/>
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.1.0-rc1"/>
-    <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.0-rc1"/>
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0-rc1"/>
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.1.0"/>
+    <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.0"/>
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0"/>
     <PackageReference Include="MessageBox.Avalonia" Version="3.1.5.1"/>
     <PackageReference Include="ReactiveUI" Version="20.1.1"/>
     <PackageReference Include="ReactiveUI.Fody" Version="19.5.41"/>
-    <PackageReference Include="Material.Icons.Avalonia" Version="2.1.9"/>
+    <PackageReference Include="Material.Icons.Avalonia" Version="2.1.10"/>
     <PackageReference Include="Glob" Version="1.2.0-alpha0037"/>
     <PackageReference Include="NLog" Version="5.3.2"/>
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.4"/>
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5"/>
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\**"/>
-    <AvaloniaResource Remove="Assets\Lumper.ico"/>
+    <AvaloniaResource Include="Assets/**"/>
+    <AvaloniaResource Remove="Assets/Lumper.ico"/>
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove=".gitignore"/>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="NLog.config" CopyToOutputDirectory="Always"/>
     <None Update="RegisterLumperURLProtocol.ps1" CopyToOutputDirectory="Always"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Lumper.Lib\Lumper.Lib.csproj"/>
-    <ProjectReference Include="..\Dependencies\VTFLib.NET\VTFLib.NET\VTFLib.NET.csproj"/>
+    <ProjectReference Include="../Lumper.Lib/Lumper.Lib.csproj"/>
+    <ProjectReference Include="../Dependencies/VTFLib.NET/VTFLib.NET/VTFLib.NET.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\Shared\VtfImageWindow.axaml.cs">
+      <DependentUpon>VtfImageWindow.axaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="Views\Shared\VtfImageWindow.axaml" />
   </ItemGroup>
 
 </Project>
